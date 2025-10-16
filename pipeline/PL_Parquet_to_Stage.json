@@ -1,6 +1,67 @@
 {
 	"name": "PL_Parquet_to_Stage",
 	"properties": {
+		"activities": [
+			{
+				"name": "load_pet_licenses",
+				"type": "Script",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "LS_SNOWFLAKE",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": "USE SCHEMA PETS_DB.DW;\n\nTRUNCATE TABLE STG_SEATTLE_PET_LICENSE;\n\nCOPY INTO STG_SEATTLE_PET_LICENSE\nFROM @azure_parquet_stage/seattle_pet_licenses.parquet\nFILE_FORMAT = (TYPE = PARQUET)\nMATCH_BY_COLUMN_NAME = CASE_INSENSITIVE\nON_ERROR = 'CONTINUE';\n\nSELECT COUNT(*) AS rows_loaded FROM STG_SEATTLE_PET_LICENSE;"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "load_location_data",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "load_pet_licenses",
+						"dependencyConditions": [
+							"Completed"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "LS_SNOWFLAKE",
+					"type": "LinkedServiceReference"
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": "USE SCHEMA PETS_DB.DW;\n\nTRUNCATE TABLE STG_LOCATION_ZIP_CITY;\n\nCOPY INTO STG_LOCATION_ZIP_CITY\nFROM @azure_parquet_stage/geo_data.parquet\nFILE_FORMAT = (TYPE = PARQUET)\nMATCH_BY_COLUMN_NAME = CASE_INSENSITIVE\nON_ERROR = 'CONTINUE';\n\nSELECT COUNT(*) AS rows_loaded FROM STG_LOCATION_ZIP_CITY;"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			}
+		],
 		"annotations": []
 	}
 }
