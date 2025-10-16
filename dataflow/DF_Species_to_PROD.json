@@ -1,0 +1,58 @@
+{
+	"name": "DF_Species_to_PROD",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "DS_Stage_Licenses_SF",
+						"type": "DatasetReference"
+					},
+					"name": "species"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "PROD_SPECIES",
+						"type": "DatasetReference"
+					},
+					"name": "prodspecies"
+				}
+			],
+			"transformations": [],
+			"scriptLines": [
+				"source(output(",
+				"          LICENSE_ISSUE_DATE as date,",
+				"          LICENSE_NUMBER as string,",
+				"          ANIMAL_NAME as string,",
+				"          SPECIES as string,",
+				"          PRIMARY_BREED as string,",
+				"          SECONDARY_BREED as string,",
+				"          ZIP_CODE as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'table') ~> species",
+				"species sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          SPECIES_KEY as decimal(38,0),",
+				"          SPECIES_NAME as string",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     stageInsert: true,",
+				"     mapColumn(",
+				"          SPECIES_NAME = SPECIES",
+				"     )) ~> prodspecies"
+			]
+		}
+	}
+}
