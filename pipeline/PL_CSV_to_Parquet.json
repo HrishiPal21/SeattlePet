@@ -1,0 +1,222 @@
+{
+	"name": "PL_CSV_to_Parquet",
+	"properties": {
+		"activities": [
+			{
+				"name": "copy_csv_to_parquet",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "00:10:00",
+					"retry": 2,
+					"retryIntervalInSeconds": 60,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "DelimitedTextSource",
+						"storeSettings": {
+							"type": "AzureBlobStorageReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "DelimitedTextReadSettings"
+						}
+					},
+					"sink": {
+						"type": "ParquetSink",
+						"storeSettings": {
+							"type": "AzureBlobStorageWriteSettings"
+						},
+						"formatSettings": {
+							"type": "ParquetWriteSettings"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "License Issue Date",
+									"type": "String"
+								},
+								"sink": {
+									"name": "LICENSE_ISSUE_DATE"
+								}
+							},
+							{
+								"source": {
+									"name": "License Number",
+									"type": "String"
+								},
+								"sink": {
+									"name": "LICENSE_NUMBER"
+								}
+							},
+							{
+								"source": {
+									"name": "Animal's Name",
+									"type": "String"
+								},
+								"sink": {
+									"name": "ANIMAL_NAME"
+								}
+							},
+							{
+								"source": {
+									"name": "Species",
+									"type": "String"
+								},
+								"sink": {
+									"name": "SPECIES"
+								}
+							},
+							{
+								"source": {
+									"name": "Primary Breed",
+									"type": "String"
+								},
+								"sink": {
+									"name": "PRIMARY_BREED"
+								}
+							},
+							{
+								"source": {
+									"name": "Secondary Breed",
+									"type": "String"
+								},
+								"sink": {
+									"name": "SECONDARY_BREED"
+								}
+							},
+							{
+								"source": {
+									"name": "ZIP Code",
+									"type": "String"
+								},
+								"sink": {
+									"name": "ZIP_CODE"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "DS_Licenses_CSV",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DS_Licenses_Parquet",
+						"type": "DatasetReference"
+					}
+				]
+			},
+			{
+				"name": "copy_excel_to_parquet",
+				"type": "Copy",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "00:10:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "ExcelSource",
+						"storeSettings": {
+							"type": "AzureBlobStorageReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						}
+					},
+					"sink": {
+						"type": "ParquetSink",
+						"storeSettings": {
+							"type": "AzureBlobStorageWriteSettings"
+						},
+						"formatSettings": {
+							"type": "ParquetWriteSettings"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"mappings": [
+							{
+								"source": {
+									"name": "zipcode",
+									"type": "String"
+								},
+								"sink": {
+									"name": "ZIP_CODE"
+								}
+							},
+							{
+								"source": {
+									"name": "city",
+									"type": "String"
+								},
+								"sink": {
+									"name": "CITY_NAME"
+								}
+							},
+							{
+								"source": {
+									"name": "state_abbr",
+									"type": "String"
+								},
+								"sink": {
+									"name": "STATE_CODE"
+								}
+							},
+							{
+								"source": {
+									"name": "county",
+									"type": "String"
+								},
+								"sink": {
+									"name": "COUNTY_NAME"
+								}
+							}
+						],
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "DS_Geo_XLSX",
+						"type": "DatasetReference"
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "DS_Geo_Parquet",
+						"type": "DatasetReference"
+					}
+				]
+			}
+		],
+		"annotations": [],
+		"lastPublishTime": "2025-10-16T01:18:48Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

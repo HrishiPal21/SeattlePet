@@ -1,0 +1,88 @@
+{
+	"name": "DF_Parquet_to_Stage",
+	"properties": {
+		"type": "MappingDataFlow",
+		"typeProperties": {
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "DS_Licenses_Parquet",
+						"type": "DatasetReference"
+					},
+					"name": "SourceLicenses"
+				},
+				{
+					"dataset": {
+						"referenceName": "DS_Geo_Parquet",
+						"type": "DatasetReference"
+					},
+					"name": "SourceLocation"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "DS_Stage_Licenses_SF",
+						"type": "DatasetReference"
+					},
+					"name": "SinkLicenses"
+				},
+				{
+					"dataset": {
+						"referenceName": "DS_Stage_Location_SF",
+						"type": "DatasetReference"
+					},
+					"name": "SinkLocation"
+				}
+			],
+			"transformations": [],
+			"scriptLines": [
+				"source(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false,",
+				"     format: 'parquet') ~> SourceLicenses",
+				"source(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     ignoreNoFilesFound: false,",
+				"     format: 'parquet') ~> SourceLocation",
+				"SourceLicenses sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          LICENSE_ISSUE_DATE as date,",
+				"          LICENSE_NUMBER as string,",
+				"          ANIMAL_NAME as string,",
+				"          SPECIES as string,",
+				"          PRIMARY_BREED as string,",
+				"          SECONDARY_BREED as string,",
+				"          ZIP_CODE as string",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     truncate:true,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     stageInsert: true) ~> SinkLicenses",
+				"SourceLocation sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          ZIP_CODE as string,",
+				"          CITY_NAME as string,",
+				"          STATE_CODE as string,",
+				"          COUNTY_NAME as string",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     truncate:true,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     stageInsert: true) ~> SinkLocation"
+			]
+		}
+	}
+}
