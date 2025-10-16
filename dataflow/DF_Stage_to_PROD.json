@@ -26,12 +26,18 @@
 						"type": "DatasetReference"
 					},
 					"name": "prodLicenseFact"
+				},
+				{
+					"name": "prodLocationDim"
 				}
 			],
 			"transformations": [
 				{
 					"name": "ColumnTransformer",
 					"description": "autobots roll out"
+				},
+				{
+					"name": "join1"
 				}
 			],
 			"scriptLines": [
@@ -57,7 +63,12 @@
 				"     allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     format: 'table') ~> stageLocation",
-				"stageLicense derive(DATE_KEY = toInteger(toString(LICENSE_ISSUE_DATE, 'yyyymmdd'))) ~> ColumnTransformer",
+				"join1 derive(DATE_KEY = toInteger(toString(LICENSE_ISSUE_DATE, 'yyyymmdd'))) ~> ColumnTransformer",
+				"stageLicense, stageLocation join(stageLicense@ZIP_CODE == stageLocation@ZIP_CODE,",
+				"     joinType:'left',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> join1",
 				"ColumnTransformer sink(allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     input(",
@@ -79,8 +90,20 @@
 				"     stageInsert: true,",
 				"     mapColumn(",
 				"          LICENSE_ISSUE_DATE_KEY = DATE_KEY,",
+				"          LOCATION_KEY,",
 				"          LICENSE_NUMBER",
-				"     )) ~> prodLicenseFact"
+				"     )) ~> prodLicenseFact",
+				"stageLocation sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     mapColumn(",
+				"          LOCATION_KEY,",
+				"          CITY_NAME,",
+				"          STATE_CODE,",
+				"          COUNTY_NAME,",
+				"          ZIP_CODE",
+				"     )) ~> prodLocationDim"
 			]
 		}
 	}
