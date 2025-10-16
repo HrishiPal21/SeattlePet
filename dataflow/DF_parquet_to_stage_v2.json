@@ -40,7 +40,7 @@
 				"     validateSchema: false,",
 				"     ignoreNoFilesFound: false,",
 				"     format: 'parquet') ~> source1",
-				"source1 derive(ISSUE_DATE_DT = toDate(LICENSE_ISSUE_DATE, 'M d, y')) ~> transformers",
+				"source1 derive(ISSUE_DATE_DT = toDate(LICENSE_ISSUE_DATE, 'MMMM dd, yyyy')) ~> transformers",
 				"transformers sink(allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     input(",
@@ -59,7 +59,16 @@
 				"     format: 'table',",
 				"     skipDuplicateMapInputs: true,",
 				"     skipDuplicateMapOutputs: true,",
-				"     stageInsert: true) ~> sink1"
+				"     stageInsert: true,",
+				"     mapColumn(",
+				"          LICENSE_ISSUE_DATE = ISSUE_DATE_DT,",
+				"          LICENSE_NUMBER,",
+				"          ANIMAL_NAME,",
+				"          SPECIES,",
+				"          PRIMARY_BREED,",
+				"          SECONDARY_BREED,",
+				"          ZIP_CODE",
+				"     )) ~> sink1"
 			]
 		}
 	}
