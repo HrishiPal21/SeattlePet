@@ -1,0 +1,29 @@
+{
+	"name": "PROD_SPECIES",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "LS_SNOWFLAKE",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "SnowflakeV2Table",
+		"schema": [
+			{
+				"name": "SPECIES_KEY",
+				"type": "NUMBER",
+				"precision": 38,
+				"scale": 0
+			},
+			{
+				"name": "SPECIES_NAME",
+				"type": "VARCHAR",
+				"precision": 0,
+				"scale": 0
+			}
+		],
+		"typeProperties": {
+			"schema": "DW",
+			"table": "SPECIES_DIM"
+		}
+	}
+}
