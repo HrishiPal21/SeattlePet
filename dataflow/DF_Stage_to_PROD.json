@@ -3,11 +3,84 @@
 	"properties": {
 		"type": "MappingDataFlow",
 		"typeProperties": {
-			"sources": [],
-			"sinks": [],
-			"transformations": [],
+			"sources": [
+				{
+					"dataset": {
+						"referenceName": "DS_Stage_Licenses_SF",
+						"type": "DatasetReference"
+					},
+					"name": "stageLicense"
+				},
+				{
+					"dataset": {
+						"referenceName": "PROD_LOCATION",
+						"type": "DatasetReference"
+					},
+					"name": "stageLocation"
+				}
+			],
+			"sinks": [
+				{
+					"dataset": {
+						"referenceName": "PROD_LICENSE_FACT",
+						"type": "DatasetReference"
+					},
+					"name": "prodLicenseFact"
+				}
+			],
+			"transformations": [
+				{
+					"name": "ColumnTransformer",
+					"description": "autobots roll out"
+				}
+			],
 			"scriptLines": [
-				""
+				"source(output(",
+				"          LICENSE_ISSUE_DATE as date,",
+				"          LICENSE_NUMBER as string,",
+				"          ANIMAL_NAME as string,",
+				"          SPECIES as string,",
+				"          PRIMARY_BREED as string,",
+				"          SECONDARY_BREED as string,",
+				"          ZIP_CODE as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'table') ~> stageLicense",
+				"source(output(",
+				"          LOCATION_KEY as decimal(38,0),",
+				"          CITY_NAME as string,",
+				"          STATE_CODE as string,",
+				"          COUNTY_NAME as string,",
+				"          ZIP_CODE as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'table') ~> stageLocation",
+				"stageLicense derive(DATE_KEY = toInteger(toString(LICENSE_ISSUE_DATE, 'yyyymmdd'))) ~> ColumnTransformer",
+				"ColumnTransformer sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          LICENSE_ISSUE_DATE_KEY as decimal(38,0),",
+				"          LOCATION_KEY as decimal(38,0),",
+				"          SPECIES_KEY as decimal(38,0),",
+				"          PRIMARY_BREED_KEY as decimal(38,0),",
+				"          SECONDARY_BREED_KEY as decimal(38,0),",
+				"          LICENSE_NUMBER as string,",
+				"          LICENSE_CNT as decimal(10,0)",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     stageInsert: true,",
+				"     mapColumn(",
+				"          LICENSE_ISSUE_DATE_KEY = DATE_KEY,",
+				"          LICENSE_NUMBER",
+				"     )) ~> prodLicenseFact"
 			]
 		}
 	}
