@@ -22,7 +22,7 @@
 					"scripts": [
 						{
 							"type": "Query",
-							"text": "USE SCHEMA PETS_DB.DW;\n\nTRUNCATE TABLE STG_SEATTLE_PET_LICENSE;\n\nCOPY INTO STG_SEATTLE_PET_LICENSE\nFROM @azure_parquet_stage/seattle_pet_licenses.parquet\nFILE_FORMAT = (TYPE = PARQUET)\nMATCH_BY_COLUMN_NAME = CASE_INSENSITIVE\nON_ERROR = 'CONTINUE';\n\nSELECT COUNT(*) AS rows_loaded FROM STG_SEATTLE_PET_LICENSE;"
+							"text": "USE SCHEMA PETS_DB.DW;\n\nTRUNCATE TABLE STG_SEATTLE_PET_LICENSE;\n\nCOPY INTO STG_SEATTLE_PET_LICENSE (\n    LICENSE_ISSUE_DATE,\n    LICENSE_NUMBER,\n    ANIMAL_NAME,\n    SPECIES,\n    PRIMARY_BREED,\n    SECONDARY_BREED,\n    ZIP_CODE\n)\nFROM (\n    SELECT \n        TRY_TO_DATE($1:LICENSE_ISSUE_DATE::VARCHAR),\n        $1:LICENSE_NUMBER::VARCHAR,\n        $1:ANIMAL_NAME::VARCHAR,\n        $1:SPECIES::VARCHAR,\n        $1:PRIMARY_BREED::VARCHAR,\n        $1:SECONDARY_BREED::VARCHAR,\n        $1:ZIP_CODE::VARCHAR\n    FROM @azure_parquet_stage/seattle_pet_licenses.parquet\n)\nFILE_FORMAT = (TYPE = PARQUET)\nON_ERROR = 'CONTINUE';\n\nSELECT COUNT(*) AS rows_loaded FROM STG_SEATTLE_PET_LICENSE;"
 						}
 					],
 					"scriptBlockExecutionTimeout": "02:00:00"
