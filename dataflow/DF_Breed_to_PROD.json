@@ -26,6 +26,13 @@
 						"type": "DatasetReference"
 					},
 					"name": "PRODbreed"
+				},
+				{
+					"dataset": {
+						"referenceName": "PROD_BREED",
+						"type": "DatasetReference"
+					},
+					"name": "PRODbreed2"
 				}
 			],
 			"transformations": [
@@ -76,7 +83,26 @@
 				"     mapColumn(",
 				"          SPECIES_KEY,",
 				"          BREED_NAME = PRIMARY_BREED",
-				"     )) ~> PRODbreed"
+				"     )) ~> PRODbreed",
+				"join1 sink(allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     input(",
+				"          BREED_KEY as decimal(38,0),",
+				"          SPECIES_KEY as decimal(38,0),",
+				"          BREED_NAME as string",
+				"     ),",
+				"     deletable:false,",
+				"     insertable:true,",
+				"     updateable:false,",
+				"     upsertable:false,",
+				"     format: 'table',",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true,",
+				"     stageInsert: true,",
+				"     mapColumn(",
+				"          SPECIES_KEY,",
+				"          BREED_NAME = SECONDARY_BREED",
+				"     )) ~> PRODbreed2"
 			]
 		}
 	}
