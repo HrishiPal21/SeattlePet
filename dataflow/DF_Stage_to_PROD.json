@@ -17,6 +17,20 @@
 						"type": "DatasetReference"
 					},
 					"name": "stageLocation"
+				},
+				{
+					"dataset": {
+						"referenceName": "PROD_BREED",
+						"type": "DatasetReference"
+					},
+					"name": "breed"
+				},
+				{
+					"dataset": {
+						"referenceName": "PROD_BREED",
+						"type": "DatasetReference"
+					},
+					"name": "breed2"
 				}
 			],
 			"sinks": [
@@ -38,6 +52,12 @@
 				},
 				{
 					"name": "join1"
+				},
+				{
+					"name": "join2"
+				},
+				{
+					"name": "join3"
 				}
 			],
 			"scriptLines": [
@@ -63,12 +83,38 @@
 				"     allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     format: 'table') ~> stageLocation",
-				"join1 derive(DATE_KEY = toInteger(toString(LICENSE_ISSUE_DATE, 'yyyymmdd'))) ~> ColumnTransformer",
+				"source(output(",
+				"          BREED_KEY as decimal(38,0),",
+				"          SPECIES_KEY as decimal(38,0),",
+				"          BREED_NAME as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'table') ~> breed",
+				"source(output(",
+				"          BREED_KEY as decimal(38,0),",
+				"          SPECIES_KEY as decimal(38,0),",
+				"          BREED_NAME as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'table') ~> breed2",
+				"join2 derive(DATE_KEY = toInteger(toString(LICENSE_ISSUE_DATE, 'yyyymmdd'))) ~> ColumnTransformer",
 				"stageLicense, stageLocation join(stageLicense@ZIP_CODE == stageLocation@ZIP_CODE,",
 				"     joinType:'left',",
 				"     matchType:'exact',",
 				"     ignoreSpaces: false,",
 				"     broadcast: 'auto')~> join1",
+				"join3, breed2 join(SECONDARY_BREED == breed2@BREED_NAME,",
+				"     joinType:'left',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> join2",
+				"join1, breed join(PRIMARY_BREED == BREED_NAME,",
+				"     joinType:'left',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> join3",
 				"ColumnTransformer sink(allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     input(",
@@ -91,6 +137,9 @@
 				"     mapColumn(",
 				"          LICENSE_ISSUE_DATE_KEY = DATE_KEY,",
 				"          LOCATION_KEY,",
+				"          SPECIES_KEY,",
+				"          PRIMARY_BREED_KEY = breed@BREED_KEY,",
+				"          SECONDARY_BREED_KEY = breed2@BREED_KEY,",
 				"          LICENSE_NUMBER",
 				"     )) ~> prodLicenseFact",
 				"stageLocation sink(allowSchemaDrift: true,",
