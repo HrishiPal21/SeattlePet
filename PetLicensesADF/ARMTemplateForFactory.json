@@ -25,6 +25,89 @@
 	},
 	"resources": [
 		{
+			"name": "[concat(parameters('factoryName'), '/MASTER_PIPELINE')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "PL_CSV_to_Parquet",
+						"type": "ExecutePipeline",
+						"dependsOn": [],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "PL_CSV_to_Parquet",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					},
+					{
+						"name": "PL_Prod",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "PL_parquet_out_v2",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "PL_Prod",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					},
+					{
+						"name": "PL_parquet_out_v2",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "PL_CSV_to_Parquet",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "PL_parquet_out_v2",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/pipelines/PL_CSV_to_Parquet')]",
+				"[concat(variables('factoryId'), '/pipelines/PL_Prod')]",
+				"[concat(variables('factoryId'), '/pipelines/PL_parquet_out_v2')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/PL_CSV_to_Parquet')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -446,6 +529,7 @@
 									"breed": {},
 									"breed2": {},
 									"prodLocationSRC": {},
+									"prodspecies": {},
 									"prodLicenseFact": {}
 								}
 							},
@@ -1250,6 +1334,67 @@
 			]
 		},
 		{
+			"name": "[concat(parameters('factoryName'), '/DF_Loc_to_PROD')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "DS_Stage_Location_SF",
+								"type": "DatasetReference"
+							},
+							"name": "source1"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "PROD_LOCATION",
+								"type": "DatasetReference"
+							},
+							"name": "sink1"
+						}
+					],
+					"transformations": [],
+					"scriptLines": [
+						"source(output(",
+						"          ZIP_CODE as string,",
+						"          CITY_NAME as string,",
+						"          STATE_CODE as string,",
+						"          COUNTY_NAME as string",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     format: 'table') ~> source1",
+						"source1 sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     input(",
+						"          LOCATION_KEY as decimal(38,0),",
+						"          CITY_NAME as string,",
+						"          STATE_CODE as string,",
+						"          COUNTY_NAME as string,",
+						"          ZIP_CODE as string",
+						"     ),",
+						"     deletable:false,",
+						"     insertable:true,",
+						"     updateable:false,",
+						"     upsertable:false,",
+						"     format: 'table',",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true,",
+						"     stageInsert: true) ~> sink1"
+					]
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/DS_Stage_Location_SF')]",
+				"[concat(variables('factoryId'), '/datasets/PROD_LOCATION')]"
+			]
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/DF_Parquet_to_Stage')]",
 			"type": "Microsoft.DataFactory/factories/dataflows",
 			"apiVersion": "2018-06-01",
@@ -1470,6 +1615,13 @@
 								"type": "DatasetReference"
 							},
 							"name": "prodLocationSRC"
+						},
+						{
+							"dataset": {
+								"referenceName": "PROD_SPECIES",
+								"type": "DatasetReference"
+							},
+							"name": "prodspecies"
 						}
 					],
 					"sinks": [
@@ -1494,6 +1646,9 @@
 						},
 						{
 							"name": "join3"
+						},
+						{
+							"name": "join4"
 						}
 					],
 					"scriptLines": [
@@ -1535,22 +1690,36 @@
 						"     allowSchemaDrift: true,",
 						"     validateSchema: false,",
 						"     format: 'table') ~> prodLocationSRC",
+						"source(output(",
+						"          SPECIES_KEY as decimal(38,0),",
+						"          SPECIES_NAME as string",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     format: 'table') ~> prodspecies",
 						"join2 derive(DATE_KEY = toInteger(toString(LICENSE_ISSUE_DATE, 'yyyymmdd'))) ~> ColumnTransformer",
 						"stageLicense, prodLocationSRC join(stageLicense@ZIP_CODE == prodLocationSRC@ZIP_CODE,",
 						"     joinType:'left',",
 						"     matchType:'exact',",
 						"     ignoreSpaces: false,",
 						"     broadcast: 'auto')~> join1",
-						"join3, breed2 join(SECONDARY_BREED == breed2@BREED_NAME,",
+						"join3, breed2 join(SECONDARY_BREED == breed2@BREED_NAME",
+						"     && prodspecies@SPECIES_KEY == breed2@SPECIES_KEY,",
 						"     joinType:'left',",
 						"     matchType:'exact',",
 						"     ignoreSpaces: false,",
 						"     broadcast: 'auto')~> join2",
-						"join1, breed join(PRIMARY_BREED == BREED_NAME,",
+						"join4, breed join(PRIMARY_BREED == BREED_NAME",
+						"     && prodspecies@SPECIES_KEY == breed@SPECIES_KEY,",
 						"     joinType:'left',",
 						"     matchType:'exact',",
 						"     ignoreSpaces: false,",
 						"     broadcast: 'auto')~> join3",
+						"join1, prodspecies join(SPECIES == SPECIES_NAME,",
+						"     joinType:'left',",
+						"     matchType:'exact',",
+						"     ignoreSpaces: false,",
+						"     broadcast: 'auto')~> join4",
 						"ColumnTransformer sink(allowSchemaDrift: true,",
 						"     validateSchema: false,",
 						"     input(",
@@ -1586,6 +1755,7 @@
 				"[concat(variables('factoryId'), '/datasets/DS_Stage_Licenses_SF')]",
 				"[concat(variables('factoryId'), '/datasets/PROD_BREED')]",
 				"[concat(variables('factoryId'), '/datasets/PROD_LOCATION')]",
+				"[concat(variables('factoryId'), '/datasets/PROD_SPECIES')]",
 				"[concat(variables('factoryId'), '/datasets/PROD_LICENSE_FACT')]"
 			]
 		},
@@ -1668,150 +1838,6 @@
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/datasets/DS_Licenses_Parquet')]",
 				"[concat(variables('factoryId'), '/datasets/DS_Stage_Licenses_SF')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/DF_Loc_to_PROD')]",
-			"type": "Microsoft.DataFactory/factories/dataflows",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"type": "MappingDataFlow",
-				"typeProperties": {
-					"sources": [
-						{
-							"dataset": {
-								"referenceName": "DS_Stage_Location_SF",
-								"type": "DatasetReference"
-							},
-							"name": "source1"
-						}
-					],
-					"sinks": [
-						{
-							"dataset": {
-								"referenceName": "PROD_LOCATION",
-								"type": "DatasetReference"
-							},
-							"name": "sink1"
-						}
-					],
-					"transformations": [],
-					"scriptLines": [
-						"source(output(",
-						"          ZIP_CODE as string,",
-						"          CITY_NAME as string,",
-						"          STATE_CODE as string,",
-						"          COUNTY_NAME as string",
-						"     ),",
-						"     allowSchemaDrift: true,",
-						"     validateSchema: false,",
-						"     format: 'table') ~> source1",
-						"source1 sink(allowSchemaDrift: true,",
-						"     validateSchema: false,",
-						"     input(",
-						"          LOCATION_KEY as decimal(38,0),",
-						"          CITY_NAME as string,",
-						"          STATE_CODE as string,",
-						"          COUNTY_NAME as string,",
-						"          ZIP_CODE as string",
-						"     ),",
-						"     deletable:false,",
-						"     insertable:true,",
-						"     updateable:false,",
-						"     upsertable:false,",
-						"     format: 'table',",
-						"     skipDuplicateMapInputs: true,",
-						"     skipDuplicateMapOutputs: true,",
-						"     stageInsert: true) ~> sink1"
-					]
-				}
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/datasets/DS_Stage_Location_SF')]",
-				"[concat(variables('factoryId'), '/datasets/PROD_LOCATION')]"
-			]
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/MASTER_PIPELINE')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"activities": [
-					{
-						"name": "PL_CSV_to_Parquet",
-						"type": "ExecutePipeline",
-						"dependsOn": [],
-						"policy": {
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"pipeline": {
-								"referenceName": "PL_CSV_to_Parquet",
-								"type": "PipelineReference"
-							},
-							"waitOnCompletion": true,
-							"parameters": {}
-						}
-					},
-					{
-						"name": "PL_Prod",
-						"type": "ExecutePipeline",
-						"dependsOn": [
-							{
-								"activity": "PL_parquet_out_v2",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"pipeline": {
-								"referenceName": "PL_Prod",
-								"type": "PipelineReference"
-							},
-							"waitOnCompletion": true,
-							"parameters": {}
-						}
-					},
-					{
-						"name": "PL_parquet_out_v2",
-						"type": "ExecutePipeline",
-						"dependsOn": [
-							{
-								"activity": "PL_CSV_to_Parquet",
-								"dependencyConditions": [
-									"Succeeded"
-								]
-							}
-						],
-						"policy": {
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"pipeline": {
-								"referenceName": "PL_parquet_out_v2",
-								"type": "PipelineReference"
-							},
-							"waitOnCompletion": true,
-							"parameters": {}
-						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {}
-				},
-				"annotations": []
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/pipelines/PL_CSV_to_Parquet')]",
-				"[concat(variables('factoryId'), '/pipelines/PL_Prod')]",
-				"[concat(variables('factoryId'), '/pipelines/PL_parquet_out_v2')]"
 			]
 		}
 	]
