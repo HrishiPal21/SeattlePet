@@ -33,6 +33,15 @@
 				},
 				{
 					"name": "secondary"
+				},
+				{
+					"name": "union"
+				},
+				{
+					"name": "aggregate1"
+				},
+				{
+					"name": "join1"
 				}
 			],
 			"scriptLines": [
@@ -74,7 +83,16 @@
 				"          BREED = SECONDARY_BREED",
 				"     ),",
 				"     skipDuplicateMapInputs: true,",
-				"     skipDuplicateMapOutputs: true) ~> secondary"
+				"     skipDuplicateMapOutputs: true) ~> secondary",
+				"primary, secondary union(byName: true)~> union",
+				"union aggregate(groupBy(SPECIES,",
+				"          BREED),",
+				"     CT = count(BREED)) ~> aggregate1",
+				"aggregate1, ProdSpecies join(SPECIES == SPECIES_NAME,",
+				"     joinType:'left',",
+				"     matchType:'exact',",
+				"     ignoreSpaces: false,",
+				"     broadcast: 'auto')~> join1"
 			]
 		}
 	}
