@@ -34,6 +34,12 @@
 				},
 				{
 					"name": "exists1"
+				},
+				{
+					"name": "select1"
+				},
+				{
+					"name": "derivedColumn1"
 				}
 			],
 			"scriptLines": [
@@ -56,11 +62,23 @@
 				"     allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     format: 'table') ~> prodSpecies",
-				"exists1 aggregate(groupBy(SPECIES),",
+				"select1 aggregate(groupBy(SPECIES),",
 				"     dummy = count(LICENSE_NUMBER)) ~> aggregate1",
 				"species, prodSpecies exists(SPECIES == SPECIES_NAME,",
 				"     negate:true,",
 				"     broadcast: 'auto')~> exists1",
+				"derivedColumn1 select(mapColumn(",
+				"          LICENSE_ISSUE_DATE,",
+				"          LICENSE_NUMBER,",
+				"          ANIMAL_NAME,",
+				"          SPECIES,",
+				"          PRIMARY_BREED,",
+				"          SECONDARY_BREED,",
+				"          ZIP_CODE",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> select1",
+				"exists1 derive(SPECIES = iifNull(SPECIES, \"UNKNOWN\")) ~> derivedColumn1",
 				"aggregate1 sink(allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     input(",
