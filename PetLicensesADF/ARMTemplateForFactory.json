@@ -1304,7 +1304,8 @@
 						"     && BREED == BREED_NAME,",
 						"     negate:true,",
 						"     broadcast: 'auto')~> exists1",
-						"aggregate1 derive(BREED = iifNull(BREED, \"UNKNOWN\")) ~> derivedColumn1",
+						"aggregate1 derive(BREED = iifNull(BREED, \"UNKNOWN\"),",
+						"          SPECIES = iifNull(SPECIES, \"UNKNOWN\")) ~> derivedColumn1",
 						"exists1 sink(allowSchemaDrift: true,",
 						"     validateSchema: false,",
 						"     input(",
@@ -1530,6 +1531,12 @@
 						},
 						{
 							"name": "exists1"
+						},
+						{
+							"name": "select1"
+						},
+						{
+							"name": "derivedColumn1"
 						}
 					],
 					"scriptLines": [
@@ -1552,11 +1559,23 @@
 						"     allowSchemaDrift: true,",
 						"     validateSchema: false,",
 						"     format: 'table') ~> prodSpecies",
-						"exists1 aggregate(groupBy(SPECIES),",
+						"select1 aggregate(groupBy(SPECIES),",
 						"     dummy = count(LICENSE_NUMBER)) ~> aggregate1",
 						"species, prodSpecies exists(SPECIES == SPECIES_NAME,",
 						"     negate:true,",
 						"     broadcast: 'auto')~> exists1",
+						"derivedColumn1 select(mapColumn(",
+						"          LICENSE_ISSUE_DATE,",
+						"          LICENSE_NUMBER,",
+						"          ANIMAL_NAME,",
+						"          SPECIES,",
+						"          PRIMARY_BREED,",
+						"          SECONDARY_BREED,",
+						"          ZIP_CODE",
+						"     ),",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true) ~> select1",
+						"exists1 derive(SPECIES = iifNull(SPECIES, \"UNKNOWN\")) ~> derivedColumn1",
 						"aggregate1 sink(allowSchemaDrift: true,",
 						"     validateSchema: false,",
 						"     input(",
@@ -1652,6 +1671,9 @@
 						},
 						{
 							"name": "join4"
+						},
+						{
+							"name": "derivedColumn1"
 						}
 					],
 					"scriptLines": [
@@ -1701,7 +1723,7 @@
 						"     validateSchema: false,",
 						"     format: 'table') ~> prodspecies",
 						"join2 derive(DATE_KEY = toInteger(toString(LICENSE_ISSUE_DATE, 'yyyymmdd'))) ~> ColumnTransformer",
-						"stageLicense, prodLocationSRC join(stageLicense@ZIP_CODE == prodLocationSRC@ZIP_CODE,",
+						"derivedColumn1, prodLocationSRC join(stageLicense@ZIP_CODE == prodLocationSRC@ZIP_CODE,",
 						"     joinType:'left',",
 						"     matchType:'exact',",
 						"     ignoreSpaces: false,",
@@ -1723,6 +1745,9 @@
 						"     matchType:'exact',",
 						"     ignoreSpaces: false,",
 						"     broadcast: 'auto')~> join4",
+						"stageLicense derive(SPECIES = iifNull(SPECIES, \"UNKNOWN\"),",
+						"          PRIMARY_BREED = iifNull(PRIMARY_BREED, \"UNKNOWN\"),",
+						"          SECONDARY_BREED = iifNull(SECONDARY_BREED, \"UNKNOWN\")) ~> derivedColumn1",
 						"ColumnTransformer sink(allowSchemaDrift: true,",
 						"     validateSchema: false,",
 						"     input(",
