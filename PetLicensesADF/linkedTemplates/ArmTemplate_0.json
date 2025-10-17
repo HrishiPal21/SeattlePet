@@ -1325,7 +1325,7 @@
 						"     validateSchema: false,",
 						"     format: 'table') ~> prodLocationSRC",
 						"join2 derive(DATE_KEY = toInteger(toString(LICENSE_ISSUE_DATE, 'yyyymmdd'))) ~> ColumnTransformer",
-						"stageLicense, prodLocationSRC join(iifNull(stageLicense@ZIP_CODE, 'Unknown') == prodLocationSRC@ZIP_CODE,",
+						"stageLicense, prodLocationSRC join(stageLicense@ZIP_CODE == prodLocationSRC@ZIP_CODE,",
 						"     joinType:'left',",
 						"     matchType:'exact',",
 						"     ignoreSpaces: false,",
