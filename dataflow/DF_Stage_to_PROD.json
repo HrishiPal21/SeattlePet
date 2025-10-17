@@ -13,13 +13,6 @@
 				},
 				{
 					"dataset": {
-						"referenceName": "PROD_LOCATION",
-						"type": "DatasetReference"
-					},
-					"name": "stageLocation"
-				},
-				{
-					"dataset": {
 						"referenceName": "PROD_BREED",
 						"type": "DatasetReference"
 					},
@@ -47,13 +40,6 @@
 						"type": "DatasetReference"
 					},
 					"name": "prodLicenseFact"
-				},
-				{
-					"dataset": {
-						"referenceName": "PROD_LOCATION",
-						"type": "DatasetReference"
-					},
-					"name": "prodLocationDim"
 				}
 			],
 			"transformations": [
@@ -85,16 +71,6 @@
 				"     validateSchema: false,",
 				"     format: 'table') ~> stageLicense",
 				"source(output(",
-				"          LOCATION_KEY as decimal(38,0),",
-				"          CITY_NAME as string,",
-				"          STATE_CODE as string,",
-				"          COUNTY_NAME as string,",
-				"          ZIP_CODE as string",
-				"     ),",
-				"     allowSchemaDrift: true,",
-				"     validateSchema: false,",
-				"     format: 'table') ~> stageLocation",
-				"source(output(",
 				"          BREED_KEY as decimal(38,0),",
 				"          SPECIES_KEY as decimal(38,0),",
 				"          BREED_NAME as string",
@@ -121,7 +97,7 @@
 				"     validateSchema: false,",
 				"     format: 'table') ~> prodLocationSRC",
 				"join2 derive(DATE_KEY = toInteger(toString(LICENSE_ISSUE_DATE, 'yyyymmdd'))) ~> ColumnTransformer",
-				"stageLicense, stageLocation join(stageLicense@ZIP_CODE == stageLocation@ZIP_CODE,",
+				"stageLicense, prodLocationSRC join(iifNull(stageLicense@ZIP_CODE, 'Unknown') == prodLocationSRC@ZIP_CODE,",
 				"     joinType:'left',",
 				"     matchType:'exact',",
 				"     ignoreSpaces: false,",
@@ -162,31 +138,7 @@
 				"          PRIMARY_BREED_KEY = breed@BREED_KEY,",
 				"          SECONDARY_BREED_KEY = breed2@BREED_KEY,",
 				"          LICENSE_NUMBER",
-				"     )) ~> prodLicenseFact",
-				"stageLocation sink(allowSchemaDrift: true,",
-				"     validateSchema: false,",
-				"     input(",
-				"          LOCATION_KEY as decimal(38,0),",
-				"          CITY_NAME as string,",
-				"          STATE_CODE as string,",
-				"          COUNTY_NAME as string,",
-				"          ZIP_CODE as string",
-				"     ),",
-				"     deletable:false,",
-				"     insertable:true,",
-				"     updateable:false,",
-				"     upsertable:false,",
-				"     truncate:true,",
-				"     format: 'table',",
-				"     skipDuplicateMapInputs: true,",
-				"     skipDuplicateMapOutputs: true,",
-				"     mapColumn(",
-				"          LOCATION_KEY,",
-				"          CITY_NAME,",
-				"          STATE_CODE,",
-				"          COUNTY_NAME,",
-				"          ZIP_CODE",
-				"     )) ~> prodLocationDim"
+				"     )) ~> prodLicenseFact"
 			]
 		}
 	}
