@@ -286,7 +286,7 @@
 							"scripts": [
 								{
 									"type": "Query",
-									"text": "USE SCHEMA PETS_DB.DW;\n\nTRUNCATE TABLE STG_SEATTLE_PET_LICENSE;\n\nCOPY INTO STG_SEATTLE_PET_LICENSE\nFROM @azure_parquet_stage/seattle_pet_licenses.parquet\nFILE_FORMAT = (TYPE = PARQUET)\nMATCH_BY_COLUMN_NAME = CASE_INSENSITIVE\nON_ERROR = 'CONTINUE';\n\nSELECT COUNT(*) AS rows_loaded FROM STG_SEATTLE_PET_LICENSE;"
+									"text": "USE SCHEMA PETS_DB.DW;\n\nTRUNCATE TABLE STG_SEATTLE_PET_LICENSE;\n\nCOPY INTO STG_SEATTLE_PET_LICENSE (\n    LICENSE_ISSUE_DATE,\n    LICENSE_NUMBER,\n    ANIMAL_NAME,\n    SPECIES,\n    PRIMARY_BREED,\n    SECONDARY_BREED,\n    ZIP_CODE\n)\nFROM (\n    SELECT \n        TRY_TO_DATE($1:LICENSE_ISSUE_DATE::VARCHAR),\n        $1:LICENSE_NUMBER::VARCHAR,\n        $1:ANIMAL_NAME::VARCHAR,\n        $1:SPECIES::VARCHAR,\n        $1:PRIMARY_BREED::VARCHAR,\n        $1:SECONDARY_BREED::VARCHAR,\n        $1:ZIP_CODE::VARCHAR\n    FROM @azure_parquet_stage/seattle_pet_licenses.parquet\n)\nFILE_FORMAT = (TYPE = PARQUET)\nON_ERROR = 'CONTINUE';\n\nSELECT COUNT(*) AS rows_loaded FROM STG_SEATTLE_PET_LICENSE;"
 								}
 							],
 							"scriptBlockExecutionTimeout": "02:00:00"
@@ -360,7 +360,8 @@
 								"parameters": {},
 								"datasetParameters": {
 									"species": {},
-									"prodspecies": {}
+									"prodSpecies": {},
+									"prodspeciessink": {}
 								}
 							},
 							"staging": {},
@@ -397,9 +398,9 @@
 								"parameters": {},
 								"datasetParameters": {
 									"breed": {},
-									"species": {},
-									"PRODbreed": {},
-									"PRODbreed2": {}
+									"ProdSpecies": {},
+									"ProdBreed": {},
+									"sink1": {}
 								}
 							},
 							"staging": {},
@@ -416,6 +417,12 @@
 						"dependsOn": [
 							{
 								"activity": "DF_Breed_to_PROD",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "DF_Loc_to_PROD",
 								"dependencyConditions": [
 									"Succeeded"
 								]
@@ -436,11 +443,40 @@
 								"parameters": {},
 								"datasetParameters": {
 									"stageLicense": {},
-									"stageLocation": {},
 									"breed": {},
 									"breed2": {},
-									"prodLicenseFact": {},
-									"prodLocationDim": {}
+									"prodLocationSRC": {},
+									"prodLicenseFact": {}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					},
+					{
+						"name": "DF_Loc_to_PROD",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "DF_Loc_to_PROD",
+								"type": "DataFlowReference",
+								"parameters": {},
+								"datasetParameters": {
+									"source1": {},
+									"sink1": {}
 								}
 							},
 							"staging": {},
@@ -460,7 +496,54 @@
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/dataflows/DF_Species_to_PROD')]",
 				"[concat(variables('factoryId'), '/dataflows/DF_Breed_to_PROD')]",
-				"[concat(variables('factoryId'), '/dataflows/DF_Stage_to_PROD')]"
+				"[concat(variables('factoryId'), '/dataflows/DF_Stage_to_PROD')]",
+				"[concat(variables('factoryId'), '/dataflows/DF_Loc_to_PROD')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/PL_parquet_out_v2')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "DF_parquet_to_stage_v2",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "DF_parquet_to_stage_v2",
+								"type": "DataFlowReference",
+								"parameters": {},
+								"datasetParameters": {
+									"source1": {},
+									"sink1": {}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/dataflows/DF_parquet_to_stage_v2')]"
 			]
 		},
 		{
@@ -1042,7 +1125,14 @@
 								"referenceName": "PROD_SPECIES",
 								"type": "DatasetReference"
 							},
-							"name": "species"
+							"name": "ProdSpecies"
+						},
+						{
+							"dataset": {
+								"referenceName": "PROD_BREED",
+								"type": "DatasetReference"
+							},
+							"name": "ProdBreed"
 						}
 					],
 					"sinks": [
@@ -1051,19 +1141,30 @@
 								"referenceName": "PROD_BREED",
 								"type": "DatasetReference"
 							},
-							"name": "PRODbreed"
-						},
-						{
-							"dataset": {
-								"referenceName": "PROD_BREED",
-								"type": "DatasetReference"
-							},
-							"name": "PRODbreed2"
+							"name": "sink1"
 						}
 					],
 					"transformations": [
 						{
+							"name": "primary"
+						},
+						{
+							"name": "secondary"
+						},
+						{
+							"name": "union"
+						},
+						{
+							"name": "aggregate1"
+						},
+						{
 							"name": "join1"
+						},
+						{
+							"name": "exists1"
+						},
+						{
+							"name": "derivedColumn1"
 						}
 					],
 					"scriptLines": [
@@ -1085,13 +1186,42 @@
 						"     ),",
 						"     allowSchemaDrift: true,",
 						"     validateSchema: false,",
-						"     format: 'table') ~> species",
-						"breed, species join(SPECIES == SPECIES_NAME,",
+						"     format: 'table') ~> ProdSpecies",
+						"source(output(",
+						"          BREED_KEY as decimal(38,0),",
+						"          SPECIES_KEY as decimal(38,0),",
+						"          BREED_NAME as string",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     format: 'table') ~> ProdBreed",
+						"breed select(mapColumn(",
+						"          SPECIES,",
+						"          BREED = PRIMARY_BREED",
+						"     ),",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true) ~> primary",
+						"breed select(mapColumn(",
+						"          SPECIES,",
+						"          BREED = SECONDARY_BREED",
+						"     ),",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true) ~> secondary",
+						"primary, secondary union(byName: true)~> union",
+						"union aggregate(groupBy(SPECIES,",
+						"          BREED),",
+						"     CT = count(BREED)) ~> aggregate1",
+						"derivedColumn1, ProdSpecies join(SPECIES == SPECIES_NAME,",
 						"     joinType:'left',",
 						"     matchType:'exact',",
 						"     ignoreSpaces: false,",
 						"     broadcast: 'auto')~> join1",
-						"join1 sink(allowSchemaDrift: true,",
+						"join1, ProdBreed exists(ProdSpecies@SPECIES_KEY == ProdBreed@SPECIES_KEY",
+						"     && BREED == BREED_NAME,",
+						"     negate:true,",
+						"     broadcast: 'auto')~> exists1",
+						"aggregate1 derive(BREED = iifNull(BREED, \"UNKNOWN\")) ~> derivedColumn1",
+						"exists1 sink(allowSchemaDrift: true,",
 						"     validateSchema: false,",
 						"     input(",
 						"          BREED_KEY as decimal(38,0),",
@@ -1108,27 +1238,8 @@
 						"     stageInsert: true,",
 						"     mapColumn(",
 						"          SPECIES_KEY,",
-						"          BREED_NAME = PRIMARY_BREED",
-						"     )) ~> PRODbreed",
-						"join1 sink(allowSchemaDrift: true,",
-						"     validateSchema: false,",
-						"     input(",
-						"          BREED_KEY as decimal(38,0),",
-						"          SPECIES_KEY as decimal(38,0),",
-						"          BREED_NAME as string",
-						"     ),",
-						"     deletable:false,",
-						"     insertable:true,",
-						"     updateable:false,",
-						"     upsertable:false,",
-						"     format: 'table',",
-						"     skipDuplicateMapInputs: true,",
-						"     skipDuplicateMapOutputs: true,",
-						"     stageInsert: true,",
-						"     mapColumn(",
-						"          SPECIES_KEY,",
-						"          BREED_NAME = SECONDARY_BREED",
-						"     )) ~> PRODbreed2"
+						"          BREED_NAME = BREED",
+						"     )) ~> sink1"
 					]
 				}
 			},
@@ -1248,6 +1359,13 @@
 								"type": "DatasetReference"
 							},
 							"name": "species"
+						},
+						{
+							"dataset": {
+								"referenceName": "PROD_SPECIES",
+								"type": "DatasetReference"
+							},
+							"name": "prodSpecies"
 						}
 					],
 					"sinks": [
@@ -1256,10 +1374,17 @@
 								"referenceName": "PROD_SPECIES",
 								"type": "DatasetReference"
 							},
-							"name": "prodspecies"
+							"name": "prodspeciessink"
 						}
 					],
-					"transformations": [],
+					"transformations": [
+						{
+							"name": "aggregate1"
+						},
+						{
+							"name": "exists1"
+						}
+					],
 					"scriptLines": [
 						"source(output(",
 						"          LICENSE_ISSUE_DATE as date,",
@@ -1273,7 +1398,19 @@
 						"     allowSchemaDrift: true,",
 						"     validateSchema: false,",
 						"     format: 'table') ~> species",
-						"species sink(allowSchemaDrift: true,",
+						"source(output(",
+						"          SPECIES_KEY as decimal(38,0),",
+						"          SPECIES_NAME as string",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     format: 'table') ~> prodSpecies",
+						"exists1 aggregate(groupBy(SPECIES),",
+						"     dummy = count(LICENSE_NUMBER)) ~> aggregate1",
+						"species, prodSpecies exists(SPECIES == SPECIES_NAME,",
+						"     negate:true,",
+						"     broadcast: 'auto')~> exists1",
+						"aggregate1 sink(allowSchemaDrift: true,",
 						"     validateSchema: false,",
 						"     input(",
 						"          SPECIES_KEY as decimal(38,0),",
@@ -1289,7 +1426,7 @@
 						"     stageInsert: true,",
 						"     mapColumn(",
 						"          SPECIES_NAME = SPECIES",
-						"     )) ~> prodspecies"
+						"     )) ~> prodspeciessink"
 					]
 				}
 			},
@@ -1315,13 +1452,6 @@
 						},
 						{
 							"dataset": {
-								"referenceName": "PROD_LOCATION",
-								"type": "DatasetReference"
-							},
-							"name": "stageLocation"
-						},
-						{
-							"dataset": {
 								"referenceName": "PROD_BREED",
 								"type": "DatasetReference"
 							},
@@ -1333,6 +1463,13 @@
 								"type": "DatasetReference"
 							},
 							"name": "breed2"
+						},
+						{
+							"dataset": {
+								"referenceName": "PROD_LOCATION",
+								"type": "DatasetReference"
+							},
+							"name": "prodLocationSRC"
 						}
 					],
 					"sinks": [
@@ -1342,13 +1479,6 @@
 								"type": "DatasetReference"
 							},
 							"name": "prodLicenseFact"
-						},
-						{
-							"dataset": {
-								"referenceName": "PROD_LOCATION",
-								"type": "DatasetReference"
-							},
-							"name": "prodLocationDim"
 						}
 					],
 					"transformations": [
@@ -1380,16 +1510,6 @@
 						"     validateSchema: false,",
 						"     format: 'table') ~> stageLicense",
 						"source(output(",
-						"          LOCATION_KEY as decimal(38,0),",
-						"          CITY_NAME as string,",
-						"          STATE_CODE as string,",
-						"          COUNTY_NAME as string,",
-						"          ZIP_CODE as string",
-						"     ),",
-						"     allowSchemaDrift: true,",
-						"     validateSchema: false,",
-						"     format: 'table') ~> stageLocation",
-						"source(output(",
 						"          BREED_KEY as decimal(38,0),",
 						"          SPECIES_KEY as decimal(38,0),",
 						"          BREED_NAME as string",
@@ -1405,8 +1525,18 @@
 						"     allowSchemaDrift: true,",
 						"     validateSchema: false,",
 						"     format: 'table') ~> breed2",
+						"source(output(",
+						"          LOCATION_KEY as decimal(38,0),",
+						"          CITY_NAME as string,",
+						"          STATE_CODE as string,",
+						"          COUNTY_NAME as string,",
+						"          ZIP_CODE as string",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     format: 'table') ~> prodLocationSRC",
 						"join2 derive(DATE_KEY = toInteger(toString(LICENSE_ISSUE_DATE, 'yyyymmdd'))) ~> ColumnTransformer",
-						"stageLicense, stageLocation join(stageLicense@ZIP_CODE == stageLocation@ZIP_CODE,",
+						"stageLicense, prodLocationSRC join(iifNull(stageLicense@ZIP_CODE, 'Unknown') == prodLocationSRC@ZIP_CODE,",
 						"     joinType:'left',",
 						"     matchType:'exact',",
 						"     ignoreSpaces: false,",
@@ -1447,37 +1577,14 @@
 						"          PRIMARY_BREED_KEY = breed@BREED_KEY,",
 						"          SECONDARY_BREED_KEY = breed2@BREED_KEY,",
 						"          LICENSE_NUMBER",
-						"     )) ~> prodLicenseFact",
-						"stageLocation sink(allowSchemaDrift: true,",
-						"     validateSchema: false,",
-						"     input(",
-						"          LOCATION_KEY as decimal(38,0),",
-						"          CITY_NAME as string,",
-						"          STATE_CODE as string,",
-						"          COUNTY_NAME as string,",
-						"          ZIP_CODE as string",
-						"     ),",
-						"     deletable:false,",
-						"     insertable:true,",
-						"     updateable:false,",
-						"     upsertable:false,",
-						"     format: 'table',",
-						"     skipDuplicateMapInputs: true,",
-						"     skipDuplicateMapOutputs: true,",
-						"     mapColumn(",
-						"          LOCATION_KEY,",
-						"          CITY_NAME,",
-						"          STATE_CODE,",
-						"          COUNTY_NAME,",
-						"          ZIP_CODE",
-						"     )) ~> prodLocationDim"
+						"     )) ~> prodLicenseFact"
 					]
 				}
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/datasets/DS_Stage_Licenses_SF')]",
-				"[concat(variables('factoryId'), '/datasets/PROD_LOCATION')]",
 				"[concat(variables('factoryId'), '/datasets/PROD_BREED')]",
+				"[concat(variables('factoryId'), '/datasets/PROD_LOCATION')]",
 				"[concat(variables('factoryId'), '/datasets/PROD_LICENSE_FACT')]"
 			]
 		},
@@ -1563,49 +1670,64 @@
 			]
 		},
 		{
-			"name": "[concat(parameters('factoryName'), '/PL_parquet_out_v2')]",
-			"type": "Microsoft.DataFactory/factories/pipelines",
+			"name": "[concat(parameters('factoryName'), '/DF_Loc_to_PROD')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
 			"apiVersion": "2018-06-01",
 			"properties": {
-				"activities": [
-					{
-						"name": "DF_parquet_to_stage_v2",
-						"type": "ExecuteDataFlow",
-						"dependsOn": [],
-						"policy": {
-							"timeout": "0.12:00:00",
-							"retry": 0,
-							"retryIntervalInSeconds": 30,
-							"secureOutput": false,
-							"secureInput": false
-						},
-						"userProperties": [],
-						"typeProperties": {
-							"dataflow": {
-								"referenceName": "DF_parquet_to_stage_v2",
-								"type": "DataFlowReference",
-								"parameters": {},
-								"datasetParameters": {
-									"source1": {},
-									"sink1": {}
-								}
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "DS_Stage_Location_SF",
+								"type": "DatasetReference"
 							},
-							"staging": {},
-							"compute": {
-								"coreCount": 8,
-								"computeType": "General"
-							},
-							"traceLevel": "Fine"
+							"name": "source1"
 						}
-					}
-				],
-				"policy": {
-					"elapsedTimeMetric": {}
-				},
-				"annotations": []
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "PROD_LOCATION",
+								"type": "DatasetReference"
+							},
+							"name": "sink1"
+						}
+					],
+					"transformations": [],
+					"scriptLines": [
+						"source(output(",
+						"          ZIP_CODE as string,",
+						"          CITY_NAME as string,",
+						"          STATE_CODE as string,",
+						"          COUNTY_NAME as string",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     format: 'table') ~> source1",
+						"source1 sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     input(",
+						"          LOCATION_KEY as decimal(38,0),",
+						"          CITY_NAME as string,",
+						"          STATE_CODE as string,",
+						"          COUNTY_NAME as string,",
+						"          ZIP_CODE as string",
+						"     ),",
+						"     deletable:false,",
+						"     insertable:true,",
+						"     updateable:false,",
+						"     upsertable:false,",
+						"     format: 'table',",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true,",
+						"     stageInsert: true) ~> sink1"
+					]
+				}
 			},
 			"dependsOn": [
-				"[concat(variables('factoryId'), '/dataflows/DF_parquet_to_stage_v2')]"
+				"[concat(variables('factoryId'), '/datasets/DS_Stage_Location_SF')]",
+				"[concat(variables('factoryId'), '/datasets/PROD_LOCATION')]"
 			]
 		}
 	]

@@ -13,6 +13,64 @@
 	},
 	"resources": [
 		{
+			"name": "[concat(parameters('factoryName'), '/DF_Loc_to_PROD')]",
+			"type": "Microsoft.DataFactory/factories/dataflows",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"type": "MappingDataFlow",
+				"typeProperties": {
+					"sources": [
+						{
+							"dataset": {
+								"referenceName": "DS_Stage_Location_SF",
+								"type": "DatasetReference"
+							},
+							"name": "source1"
+						}
+					],
+					"sinks": [
+						{
+							"dataset": {
+								"referenceName": "PROD_LOCATION",
+								"type": "DatasetReference"
+							},
+							"name": "sink1"
+						}
+					],
+					"transformations": [],
+					"scriptLines": [
+						"source(output(",
+						"          ZIP_CODE as string,",
+						"          CITY_NAME as string,",
+						"          STATE_CODE as string,",
+						"          COUNTY_NAME as string",
+						"     ),",
+						"     allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     format: 'table') ~> source1",
+						"source1 sink(allowSchemaDrift: true,",
+						"     validateSchema: false,",
+						"     input(",
+						"          LOCATION_KEY as decimal(38,0),",
+						"          CITY_NAME as string,",
+						"          STATE_CODE as string,",
+						"          COUNTY_NAME as string,",
+						"          ZIP_CODE as string",
+						"     ),",
+						"     deletable:false,",
+						"     insertable:true,",
+						"     updateable:false,",
+						"     upsertable:false,",
+						"     format: 'table',",
+						"     skipDuplicateMapInputs: true,",
+						"     skipDuplicateMapOutputs: true,",
+						"     stageInsert: true) ~> sink1"
+					]
+				}
+			},
+			"dependsOn": []
+		},
+		{
 			"name": "[concat(parameters('factoryName'), '/PL_Prod')]",
 			"type": "Microsoft.DataFactory/factories/pipelines",
 			"apiVersion": "2018-06-01",
@@ -37,7 +95,8 @@
 								"parameters": {},
 								"datasetParameters": {
 									"species": {},
-									"prodspecies": {}
+									"prodSpecies": {},
+									"prodspeciessink": {}
 								}
 							},
 							"staging": {},
@@ -74,9 +133,9 @@
 								"parameters": {},
 								"datasetParameters": {
 									"breed": {},
-									"species": {},
-									"PRODbreed": {},
-									"PRODbreed2": {}
+									"ProdSpecies": {},
+									"ProdBreed": {},
+									"sink1": {}
 								}
 							},
 							"staging": {},
@@ -93,6 +152,12 @@
 						"dependsOn": [
 							{
 								"activity": "DF_Breed_to_PROD",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							},
+							{
+								"activity": "DF_Loc_to_PROD",
 								"dependencyConditions": [
 									"Succeeded"
 								]
@@ -113,11 +178,40 @@
 								"parameters": {},
 								"datasetParameters": {
 									"stageLicense": {},
-									"stageLocation": {},
 									"breed": {},
 									"breed2": {},
-									"prodLicenseFact": {},
-									"prodLocationDim": {}
+									"prodLocationSRC": {},
+									"prodLicenseFact": {}
+								}
+							},
+							"staging": {},
+							"compute": {
+								"coreCount": 8,
+								"computeType": "General"
+							},
+							"traceLevel": "Fine"
+						}
+					},
+					{
+						"name": "DF_Loc_to_PROD",
+						"type": "ExecuteDataFlow",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataflow": {
+								"referenceName": "DF_Loc_to_PROD",
+								"type": "DataFlowReference",
+								"parameters": {},
+								"datasetParameters": {
+									"source1": {},
+									"sink1": {}
 								}
 							},
 							"staging": {},
@@ -134,7 +228,9 @@
 				},
 				"annotations": []
 			},
-			"dependsOn": []
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/dataflows/DF_Loc_to_PROD')]"
+			]
 		},
 		{
 			"name": "[concat(parameters('factoryName'), '/PL_parquet_out_v2')]",
