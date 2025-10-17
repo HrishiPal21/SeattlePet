@@ -31,6 +31,13 @@
 						"type": "DatasetReference"
 					},
 					"name": "breed2"
+				},
+				{
+					"dataset": {
+						"referenceName": "PROD_LOCATION",
+						"type": "DatasetReference"
+					},
+					"name": "prodLocationSRC"
 				}
 			],
 			"sinks": [
@@ -103,6 +110,16 @@
 				"     allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     format: 'table') ~> breed2",
+				"source(output(",
+				"          LOCATION_KEY as decimal(38,0),",
+				"          CITY_NAME as string,",
+				"          STATE_CODE as string,",
+				"          COUNTY_NAME as string,",
+				"          ZIP_CODE as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'table') ~> prodLocationSRC",
 				"join2 derive(DATE_KEY = toInteger(toString(LICENSE_ISSUE_DATE, 'yyyymmdd'))) ~> ColumnTransformer",
 				"stageLicense, stageLocation join(stageLicense@ZIP_CODE == stageLocation@ZIP_CODE,",
 				"     joinType:'left',",
@@ -159,6 +176,7 @@
 				"     insertable:true,",
 				"     updateable:false,",
 				"     upsertable:false,",
+				"     truncate:true,",
 				"     format: 'table',",
 				"     skipDuplicateMapInputs: true,",
 				"     skipDuplicateMapOutputs: true,",
