@@ -53,6 +53,9 @@
 				},
 				{
 					"name": "exists1"
+				},
+				{
+					"name": "derivedColumn1"
 				}
 			],
 			"scriptLines": [
@@ -99,7 +102,7 @@
 				"union aggregate(groupBy(SPECIES,",
 				"          BREED),",
 				"     CT = count(BREED)) ~> aggregate1",
-				"aggregate1, ProdSpecies join(SPECIES == SPECIES_NAME,",
+				"derivedColumn1, ProdSpecies join(SPECIES == SPECIES_NAME,",
 				"     joinType:'left',",
 				"     matchType:'exact',",
 				"     ignoreSpaces: false,",
@@ -108,6 +111,7 @@
 				"     && BREED == BREED_NAME,",
 				"     negate:true,",
 				"     broadcast: 'auto')~> exists1",
+				"aggregate1 derive(BREED = iifNull(BREED, \"UNKNOWN\")) ~> derivedColumn1",
 				"exists1 sink(allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     input(",
