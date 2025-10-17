@@ -21,7 +21,11 @@
 					"name": "prodspecies"
 				}
 			],
-			"transformations": [],
+			"transformations": [
+				{
+					"name": "select1"
+				}
+			],
 			"scriptLines": [
 				"source(output(",
 				"          LICENSE_ISSUE_DATE as date,",
@@ -35,7 +39,12 @@
 				"     allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     format: 'table') ~> species",
-				"species sink(allowSchemaDrift: true,",
+				"species select(mapColumn(",
+				"          SPECIES",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> select1",
+				"select1 sink(allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     input(",
 				"          SPECIES_KEY as decimal(38,0),",
