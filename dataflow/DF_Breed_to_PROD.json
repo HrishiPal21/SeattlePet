@@ -16,28 +16,23 @@
 						"referenceName": "PROD_SPECIES",
 						"type": "DatasetReference"
 					},
-					"name": "species"
-				}
-			],
-			"sinks": [
-				{
-					"dataset": {
-						"referenceName": "PROD_BREED",
-						"type": "DatasetReference"
-					},
-					"name": "PRODbreed"
+					"name": "ProdSpecies"
 				},
 				{
 					"dataset": {
 						"referenceName": "PROD_BREED",
 						"type": "DatasetReference"
 					},
-					"name": "PRODbreed2"
+					"name": "ProdBreed"
 				}
 			],
+			"sinks": [],
 			"transformations": [
 				{
-					"name": "join1"
+					"name": "primaryExists"
+				},
+				{
+					"name": "matchspecies"
 				}
 			],
 			"scriptLines": [
@@ -59,50 +54,23 @@
 				"     ),",
 				"     allowSchemaDrift: true,",
 				"     validateSchema: false,",
-				"     format: 'table') ~> species",
-				"breed, species join(SPECIES == SPECIES_NAME,",
+				"     format: 'table') ~> ProdSpecies",
+				"source(output(",
+				"          BREED_KEY as decimal(38,0),",
+				"          SPECIES_KEY as decimal(38,0),",
+				"          BREED_NAME as string",
+				"     ),",
+				"     allowSchemaDrift: true,",
+				"     validateSchema: false,",
+				"     format: 'table') ~> ProdBreed",
+				"matchspecies, ProdBreed exists(PRIMARY_BREED == BREED_NAME,",
+				"     negate:true,",
+				"     broadcast: 'auto')~> primaryExists",
+				"breed, ProdSpecies join(SPECIES == SPECIES_NAME,",
 				"     joinType:'left',",
 				"     matchType:'exact',",
 				"     ignoreSpaces: false,",
-				"     broadcast: 'auto')~> join1",
-				"join1 sink(allowSchemaDrift: true,",
-				"     validateSchema: false,",
-				"     input(",
-				"          BREED_KEY as decimal(38,0),",
-				"          SPECIES_KEY as decimal(38,0),",
-				"          BREED_NAME as string",
-				"     ),",
-				"     deletable:false,",
-				"     insertable:true,",
-				"     updateable:false,",
-				"     upsertable:false,",
-				"     format: 'table',",
-				"     skipDuplicateMapInputs: true,",
-				"     skipDuplicateMapOutputs: true,",
-				"     stageInsert: true,",
-				"     mapColumn(",
-				"          SPECIES_KEY,",
-				"          BREED_NAME = PRIMARY_BREED",
-				"     )) ~> PRODbreed",
-				"join1 sink(allowSchemaDrift: true,",
-				"     validateSchema: false,",
-				"     input(",
-				"          BREED_KEY as decimal(38,0),",
-				"          SPECIES_KEY as decimal(38,0),",
-				"          BREED_NAME as string",
-				"     ),",
-				"     deletable:false,",
-				"     insertable:true,",
-				"     updateable:false,",
-				"     upsertable:false,",
-				"     format: 'table',",
-				"     skipDuplicateMapInputs: true,",
-				"     skipDuplicateMapOutputs: true,",
-				"     stageInsert: true,",
-				"     mapColumn(",
-				"          SPECIES_KEY,",
-				"          BREED_NAME = SECONDARY_BREED",
-				"     )) ~> PRODbreed2"
+				"     broadcast: 'auto')~> matchspecies"
 			]
 		}
 	}
