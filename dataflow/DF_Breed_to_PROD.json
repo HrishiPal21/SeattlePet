@@ -29,10 +29,10 @@
 			"sinks": [],
 			"transformations": [
 				{
-					"name": "primaryExists"
+					"name": "primary"
 				},
 				{
-					"name": "matchspecies"
+					"name": "secondary"
 				}
 			],
 			"scriptLines": [
@@ -63,14 +63,18 @@
 				"     allowSchemaDrift: true,",
 				"     validateSchema: false,",
 				"     format: 'table') ~> ProdBreed",
-				"matchspecies, ProdBreed exists(PRIMARY_BREED == BREED_NAME,",
-				"     negate:true,",
-				"     broadcast: 'auto')~> primaryExists",
-				"breed, ProdSpecies join(SPECIES == SPECIES_NAME,",
-				"     joinType:'left',",
-				"     matchType:'exact',",
-				"     ignoreSpaces: false,",
-				"     broadcast: 'auto')~> matchspecies"
+				"breed select(mapColumn(",
+				"          SPECIES,",
+				"          BREED = PRIMARY_BREED",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> primary",
+				"breed select(mapColumn(",
+				"          SPECIES,",
+				"          BREED = SECONDARY_BREED",
+				"     ),",
+				"     skipDuplicateMapInputs: true,",
+				"     skipDuplicateMapOutputs: true) ~> secondary"
 			]
 		}
 	}
